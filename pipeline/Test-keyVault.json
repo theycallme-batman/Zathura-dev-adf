@@ -1,0 +1,196 @@
+{
+	"name": "Test-keyVault",
+	"properties": {
+		"activities": [
+			{
+				"name": "Web1",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://zathura-kv.vault.azure.net/secrets/postgress-connect/e0d710594d454b4f9d5ca3c0b406ded4?api-version=7.0",
+					"connectVia": {
+						"referenceName": "SHIR",
+						"type": "IntegrationRuntimeReference"
+					},
+					"authentication": {
+						"type": "UserAssignedManagedIdentity"
+					}
+				}
+			},
+			{
+				"name": "pg_hostname",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "postgress_hostname",
+					"value": {
+						"value": "@json(activity('Web1').output.value).postgress_hostname",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "pg_database",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "postgress_database",
+					"value": {
+						"value": "@json(activity('Web1').output.value).postgress_database",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "pg_port",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "postgress_port",
+					"value": {
+						"value": "@json(activity('Web1').output.value).postgress_port",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "pg_username",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "postgress_username",
+					"value": {
+						"value": "@json(activity('Web1').output.value).postgress_username",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set variable5",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Web2",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "adls_url",
+					"value": {
+						"value": "@activity('Web2').output.value",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Web2",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://zathura-kv.vault.azure.net/secrets/adls-connection/d4e5f425d1ed4d738bab82f6dcb16766?api-version=7.0",
+					"connectVia": {
+						"referenceName": "SHIR",
+						"type": "IntegrationRuntimeReference"
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			}
+		],
+		"variables": {
+			"postgress_hostname": {
+				"type": "String"
+			},
+			"postgress_database": {
+				"type": "String"
+			},
+			"postgress_port": {
+				"type": "String"
+			},
+			"postgress_username": {
+				"type": "String"
+			},
+			"adls_url": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-03-15T19:52:27Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

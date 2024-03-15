@@ -1,0 +1,9 @@
+{
+	"name": "dev-zathura-adf",
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "57a04b30-8443-418c-91c5-3e10dce67bb7",
+		"tenantId": "376c87bc-b724-415e-ad7b-bc085f9dbf7f"
+	}
+}

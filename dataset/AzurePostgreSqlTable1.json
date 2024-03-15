@@ -1,0 +1,116 @@
+{
+	"name": "AzurePostgreSqlTable1",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "zathura_postgress_ls",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"postgress_hostname": {
+					"value": "@dataset().postgress_hostname",
+					"type": "Expression"
+				},
+				"postgress_portnumber": {
+					"value": "@dataset().postgress_portnumber",
+					"type": "Expression"
+				},
+				"postgress_database": {
+					"value": "@dataset().postgress_database",
+					"type": "Expression"
+				},
+				"postgress_username": {
+					"value": "@dataset().postgress_username",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"postgress_hostname": {
+				"type": "string"
+			},
+			"postgress_portnumber": {
+				"type": "string"
+			},
+			"postgress_database": {
+				"type": "string"
+			},
+			"postgress_username": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzurePostgreSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "bigint",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "flight_code",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "source",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "destination",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "estimated_departure_time",
+				"type": "timestamp without time zone",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "departure_time",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "estimated_arrival_time",
+				"type": "timestamp without time zone",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "arrival_time",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "passenger_data",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "total_seats",
+				"type": "bigint",
+				"precision": 0,
+				"scale": 0
+			},
+			{
+				"name": "status",
+				"type": "text",
+				"precision": 0,
+				"scale": 0
+			}
+		],
+		"typeProperties": {
+			"schema": "",
+			"table": ""
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,30 @@
+{
+	"name": "zathura_postgress_ls",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"postgress_hostname": {
+				"type": "string"
+			},
+			"postgress_portnumber": {
+				"type": "string"
+			},
+			"postgress_database": {
+				"type": "string"
+			},
+			"postgress_username": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzurePostgreSql",
+		"typeProperties": {
+			"connectionString": "host=@{linkedService().postgress_hostname};port=@{linkedService().postgress_portnumber};database=@{linkedService().postgress_database};uid=@{linkedService().postgress_username};encryptionmethod=1;validateservercertificate=1",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiI0M2FmMmFkMC0wZDc4LTQ2MDctOGJjNS1mZmVlMWVmNDc3YzMiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "SHIR",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

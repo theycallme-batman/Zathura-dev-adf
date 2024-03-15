@@ -1,0 +1,38 @@
+{
+	"name": "Parquet1",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "adls_parquet",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"adls_url": {
+					"value": "@dataset().adls_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"adls_url": {
+				"type": "string"
+			},
+			"table_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@concat('raw/Postgress/',dataset().table_name,'/Year=',formatDateTime(utcNow(),'yyyy'),'/Month=',formatDateTime(utcNow(),'MM'),'/Day=',formatDateTime(utcNow(),'dd'),'/')",
+					"type": "Expression"
+				},
+				"fileSystem": "zathura-dev"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
