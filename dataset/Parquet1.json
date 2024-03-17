@@ -17,6 +17,9 @@
 			},
 			"table_name": {
 				"type": "string"
+			},
+			"source": {
+				"type": "string"
 			}
 		},
 		"annotations": [],
@@ -25,7 +28,7 @@
 			"location": {
 				"type": "AzureBlobFSLocation",
 				"folderPath": {
-					"value": "@concat('raw/Postgress/',dataset().table_name,'/Year=',formatDateTime(utcNow(),'yyyy'),'/Month=',formatDateTime(utcNow(),'MM'),'/Day=',formatDateTime(utcNow(),'dd'),'/')",
+					"value": "@concat('raw/',dataset().source,'/',dataset().table_name,'/Year=',formatDateTime(utcNow(),'yyyy'),'/Month=',formatDateTime(utcNow(),'MM'),'/Day=',formatDateTime(utcNow(),'dd'),'/')",
 					"type": "Expression"
 				},
 				"fileSystem": "zathura-dev"

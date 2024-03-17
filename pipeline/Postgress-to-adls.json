@@ -1,0 +1,311 @@
+{
+	"name": "Postgress-to-adls",
+	"properties": {
+		"activities": [
+			{
+				"name": "get_runparams",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzurePostgreSqlSource",
+						"query": "Select schema_name,table_name,last_writtentimestamp from support.controlrunparams",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzurePostgreSqlTable1",
+						"type": "DatasetReference",
+						"parameters": {
+							"postgress_hostname": {
+								"value": "@pipeline().parameters.postgress_hostname",
+								"type": "Expression"
+							},
+							"postgress_portnumber": {
+								"value": "@pipeline().parameters.postgress_portnumber",
+								"type": "Expression"
+							},
+							"postgress_database": {
+								"value": "@pipeline().parameters.postgress_database",
+								"type": "Expression"
+							},
+							"postgress_username": {
+								"value": "@pipeline().parameters.postgress_username",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Get_data_for_tables",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "get_runparams",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('get_runparams').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "get_loadtimestamp",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzurePostgreSqlSource",
+									"query": {
+										"value": "@concat('Select coalesce(max(load_timestamp),''','1900-01-02 00:00:00','''',') as load_timestamp from ',item().table_name)",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "AzurePostgreSqlTable1",
+									"type": "DatasetReference",
+									"parameters": {
+										"postgress_hostname": {
+											"value": "@pipeline().parameters.postgress_hostname",
+											"type": "Expression"
+										},
+										"postgress_portnumber": {
+											"value": "@pipeline().parameters.postgress_portnumber",
+											"type": "Expression"
+										},
+										"postgress_database": {
+											"value": "@pipeline().parameters.postgress_database",
+											"type": "Expression"
+										},
+										"postgress_username": {
+											"value": "@pipeline().parameters.postgress_username",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						},
+						{
+							"name": "cmp_load-written_Timestamp",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "get_loadtimestamp",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@greater(string(activity('get_loadtimestamp').output.firstRow.load_timestamp),string(item().last_writtentimestamp))",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Postgress-to-ADLS",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzurePostgreSqlSource",
+												"query": {
+													"value": "@concat('SELECT * FROM ',item().schema_name,'.',item().table_name,' WHERE coalesce(load_timestamp, ''','1900-01-02','''',') > ''',item().last_writtentimestamp, '''')",
+													"type": "Expression"
+												},
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "ParquetSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings"
+												},
+												"formatSettings": {
+													"type": "ParquetWriteSettings",
+													"maxRowsPerFile": 100
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "AzurePostgreSqlTable1",
+												"type": "DatasetReference",
+												"parameters": {
+													"postgress_hostname": {
+														"value": "@pipeline().parameters.postgress_hostname",
+														"type": "Expression"
+													},
+													"postgress_portnumber": {
+														"value": "@pipeline().parameters.postgress_portnumber",
+														"type": "Expression"
+													},
+													"postgress_database": {
+														"value": "@pipeline().parameters.postgress_database",
+														"type": "Expression"
+													},
+													"postgress_username": {
+														"value": "@pipeline().parameters.postgress_username",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "Parquet1",
+												"type": "DatasetReference",
+												"parameters": {
+													"adls_url": {
+														"value": "@pipeline().parameters.adls_url",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@string(item().table_name)",
+														"type": "Expression"
+													},
+													"source": {
+														"value": "@pipeline().parameters.source",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "update_controlrunparams",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Postgress-to-ADLS",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzurePostgreSqlSource",
+												"query": {
+													"value": "@concat('update support.controlrunparams set last_writtentimestamp = ''',activity('get_loadtimestamp').output.firstRow.load_timestamp,'''',' where table_name = ''',item().table_name,'''','; Select 1 as abc')",
+													"type": "Expression"
+												},
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "AzurePostgreSqlTable1",
+												"type": "DatasetReference",
+												"parameters": {
+													"postgress_hostname": {
+														"value": "@pipeline().parameters.postgress_hostname",
+														"type": "Expression"
+													},
+													"postgress_portnumber": {
+														"value": "@pipeline().parameters.postgress_portnumber",
+														"type": "Expression"
+													},
+													"postgress_database": {
+														"value": "@pipeline().parameters.postgress_database",
+														"type": "Expression"
+													},
+													"postgress_username": {
+														"value": "@pipeline().parameters.postgress_username",
+														"type": "Expression"
+													}
+												}
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"postgress_hostname": {
+				"type": "string",
+				"defaultValue": "dev-zathura-edw.postgres.database.azure.com"
+			},
+			"postgress_portnumber": {
+				"type": "string",
+				"defaultValue": "5432"
+			},
+			"postgress_database": {
+				"type": "string",
+				"defaultValue": "Landing"
+			},
+			"postgress_username": {
+				"type": "string",
+				"defaultValue": "sv_pgdev"
+			},
+			"adls_url": {
+				"type": "string",
+				"defaultValue": "https://devzathura.dfs.core.windows.net/"
+			},
+			"source": {
+				"type": "string",
+				"defaultValue": "Postgress"
+			}
+		},
+		"variables": {
+			"lastWrittenTimestamp": {
+				"type": "String",
+				"defaultValue": "2023-01-05"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-03-15T07:14:21Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
