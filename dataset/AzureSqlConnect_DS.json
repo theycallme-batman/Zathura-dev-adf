@@ -1,0 +1,23 @@
+{
+	"name": "AzureSqlConnect_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase_LS",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"Sql_connectionstring": {
+					"value": "@dataset().Sql_connectionstring",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"Sql_connectionstring": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	}
+}
