@@ -117,7 +117,7 @@
 		"parameters": {
 			"receiver": {
 				"type": "string",
-				"defaultValue": "yashkothari5499@gmail.com"
+				"defaultValue": "abc@gmail.com"
 			},
 			"postgress_hostname": {
 				"type": "string",
