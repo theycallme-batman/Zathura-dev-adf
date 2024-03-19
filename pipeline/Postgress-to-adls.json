@@ -283,7 +283,7 @@
 			},
 			"postgress_database": {
 				"type": "string",
-				"defaultValue": "Landin"
+				"defaultValue": "Landing"
 			},
 			"postgress_username": {
 				"type": "string",
