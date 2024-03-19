@@ -5,9 +5,14 @@
 			{
 				"name": "Postgress-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "SQLServer-to-adls Data Ingestion",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureInput": false
 				},
@@ -36,6 +41,40 @@
 						"type": "PipelineReference"
 					},
 					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "ErrorHandling",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Postgress-to-adls Data Ingestion",
+						"dependencyConditions": [
+							"Failed",
+							"Skipped"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "GenericErrorHandling",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"receiver": {
+							"value": "@pipeline().parameters.receiver",
+							"type": "Expression"
+						},
+						"Error": {
+							"value": "@concat('|',activity('SQLServer-to-adls Data Ingestion').error?.message,'|',activity('Postgress-to-adls Data Ingestion').error?.message,'|')",
+							"type": "Expression"
+						}
+					}
 				}
 			}
 		],
