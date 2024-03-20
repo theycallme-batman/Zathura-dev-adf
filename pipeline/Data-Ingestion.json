@@ -5,6 +5,8 @@
 			{
 				"name": "Postgress-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Failed",
 				"dependsOn": [
 					{
 						"activity": "SQLServer-to-adls Data Ingestion",
@@ -51,6 +53,8 @@
 			{
 				"name": "SQLServer-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"secureInput": false
@@ -78,6 +82,8 @@
 			{
 				"name": "ErrorHandling",
 				"type": "ExecutePipeline",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Postgress-to-adls Data Ingestion",
@@ -109,6 +115,39 @@
 						"pipeline_name": {
 							"value": "@pipeline().Pipeline",
 							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Lookup1",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ExcelSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"dataset": {
+						"referenceName": "Excel_DS",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_url": {
+								"value": "@pipeline().parameters.adls_url",
+								"type": "Expression"
+							}
 						}
 					}
 				}
