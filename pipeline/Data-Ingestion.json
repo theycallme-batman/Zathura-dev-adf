@@ -5,8 +5,6 @@
 			{
 				"name": "Postgress-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Failed",
 				"dependsOn": [
 					{
 						"activity": "SQLServer-to-adls Data Ingestion",
@@ -53,11 +51,9 @@
 			{
 				"name": "SQLServer-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
-						"activity": "Execute Pipeline1",
+						"activity": "set_config",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -127,7 +123,7 @@
 				}
 			},
 			{
-				"name": "Execute Pipeline1",
+				"name": "get_env_params",
 				"type": "ExecutePipeline",
 				"dependsOn": [],
 				"policy": {
@@ -153,11 +149,11 @@
 				}
 			},
 			{
-				"name": "Set variable1",
+				"name": "set_config",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "Execute Pipeline1",
+						"activity": "get_env_params",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -169,9 +165,9 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"variableName": "test",
+					"variableName": "config",
 					"value": {
-						"value": "@activity('Execute Pipeline1').postgress_hostname",
+						"value": "@activity('get_env_params').output.pipelineReturnValue.config",
 						"type": "Expression"
 					}
 				}
@@ -188,17 +184,7 @@
 			}
 		},
 		"variables": {
-			"temp1": {
-				"type": "String"
-			},
-			"temp2": {
-				"type": "String",
-				"defaultValue": "\"1\":\"1\""
-			},
 			"config": {
-				"type": "String"
-			},
-			"test": {
 				"type": "String"
 			}
 		},

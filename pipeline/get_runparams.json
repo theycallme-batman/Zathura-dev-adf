@@ -104,7 +104,7 @@
 				}
 			},
 			{
-				"name": "convert_to_ json-config",
+				"name": "return_config",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -125,8 +125,8 @@
 						{
 							"key": "config",
 							"value": {
-								"type": "Object",
-								"content": "@json(concat('{',variables('temp2'),'}'))"
+								"type": "Expression",
+								"content": "@concat('{',variables('temp2'),'}')"
 							}
 						}
 					],
@@ -149,9 +149,6 @@
 			"temp2": {
 				"type": "String",
 				"defaultValue": "\"1\":\"1\""
-			},
-			"config": {
-				"type": "String"
 			}
 		},
 		"annotations": []
