@@ -85,8 +85,6 @@
 			{
 				"name": "ErrorHandling2",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Postgress-to-adls Data Ingestion",
@@ -174,8 +172,6 @@
 			{
 				"name": "ErrorHandling1",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "SQLServer-to-adls Data Ingestion",
