@@ -1,0 +1,1433 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "dev-zathura-adf"
+		},
+		"adls_parquet_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'adls_parquet'"
+		},
+		"zathura_postgress_ls_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'zathura_postgress_ls'"
+		},
+		"AzureKV_LS_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://zathura-key-vault.vault.azure.net/"
+		},
+		"AzureSqlDatabase_LS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().Sql_connectionstring"
+		},
+		"adls_parquet_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "@{linkedService().adls_url}"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Data-Ingestion')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Postgress-to-adls Data Ingestion",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "set_config",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Postgress-to-adls",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"postgress_hostname": {
+									"value": "@json(variables('config')).postgress_hostname",
+									"type": "Expression"
+								},
+								"postgress_portnumber": {
+									"value": "@json(variables('config')).postgress_port",
+									"type": "Expression"
+								},
+								"postgress_database": {
+									"value": "@json(variables('config')).postgress_database",
+									"type": "Expression"
+								},
+								"postgress_username": {
+									"value": "@json(variables('config')).postgress_username",
+									"type": "Expression"
+								},
+								"adls_url": {
+									"value": "@json(variables('config')).adls_url",
+									"type": "Expression"
+								},
+								"source": "Postgress"
+							}
+						}
+					},
+					{
+						"name": "SQLServer-to-adls Data Ingestion",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "set_config",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "SQLServer-to-adls",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"Sql_connectionstring": {
+									"value": "@json(variables('config')).sql_connectionstring",
+									"type": "Expression"
+								},
+								"adls_url": {
+									"value": "@json(variables('config')).adls_url",
+									"type": "Expression"
+								},
+								"source": "SQLServer"
+							}
+						}
+					},
+					{
+						"name": "ErrorHandling2",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Postgress-to-adls Data Ingestion",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "GenericErrorHandling",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"receiver": {
+									"value": "@json(variables('config')).recipients",
+									"type": "Expression"
+								},
+								"Error": {
+									"value": "@concat('Postgress-to-adls Errors -',activity('Postgress-to-adls Data Ingestion').error?.message)",
+									"type": "Expression"
+								},
+								"pipeline_name": {
+									"value": "@pipeline().Pipeline",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "get_env_params",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "get_runparams",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"adls_url": {
+									"value": "@pipeline().parameters.adls_url",
+									"type": "Expression"
+								},
+								"environment": {
+									"value": "@pipeline().parameters.environment",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "set_config",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "get_env_params",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "config",
+							"value": {
+								"value": "@activity('get_env_params').output.pipelineReturnValue.config",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ErrorHandling1",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "SQLServer-to-adls Data Ingestion",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "GenericErrorHandling",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"receiver": {
+									"value": "@json(variables('config')).recipients",
+									"type": "Expression"
+								},
+								"Error": {
+									"value": "@concat('SQLServer-to_adls Errors- ',activity('SQLServer-to-adls Data Ingestion').error?.message)",
+									"type": "Expression"
+								},
+								"pipeline_name": {
+									"value": "@pipeline().Pipeline",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string",
+						"defaultValue": "https://devzathura.dfs.core.windows.net/"
+					},
+					"environment": {
+						"type": "string",
+						"defaultValue": "dev"
+					}
+				},
+				"variables": {
+					"config": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Postgress-to-adls')]",
+				"[concat(variables('factoryId'), '/pipelines/SQLServer-to-adls')]",
+				"[concat(variables('factoryId'), '/pipelines/GenericErrorHandling')]",
+				"[concat(variables('factoryId'), '/pipelines/get_runparams')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/GenericErrorHandling')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Web1",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {},
+							"url": "https://prod-00.centralindia.logic.azure.com:443/workflows/02a3e6ec33f24d178ed63e5d6998615f/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=WHDPsu_pF2L-8k-sCvmv0UMRMggOfBZQEVBkm9fg9qc",
+							"body": {
+								"value": "{\n    \"message\" : \"@{replace(pipeline().parameters.Error,'\"','''')}\",\n    \"dataFactoryName\" : \"@{pipeline().DataFactory}\", \n    \"pipelineName\" : \"@{pipeline().parameters.pipeline_name}\", \n    \"receiver\" : \"@{pipeline().parameters.receiver}\"\n   }",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"receiver": {
+						"type": "string"
+					},
+					"Error": {
+						"type": "string"
+					},
+					"pipeline_name": {
+						"type": "string"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Postgress-to-adls')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "get_runparams",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzurePostgreSqlSource",
+								"query": "Select schema_name,table_name,last_writtentimestamp from support.controlrunparams",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzurePostgreSqlTable1",
+								"type": "DatasetReference",
+								"parameters": {
+									"postgress_hostname": {
+										"value": "@pipeline().parameters.postgress_hostname",
+										"type": "Expression"
+									},
+									"postgress_portnumber": {
+										"value": "@pipeline().parameters.postgress_portnumber",
+										"type": "Expression"
+									},
+									"postgress_database": {
+										"value": "@pipeline().parameters.postgress_database",
+										"type": "Expression"
+									},
+									"postgress_username": {
+										"value": "@pipeline().parameters.postgress_username",
+										"type": "Expression"
+									}
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Get_data_for_tables",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "get_runparams",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('get_runparams').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "get_loadtimestamp",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzurePostgreSqlSource",
+											"query": {
+												"value": "@concat('Select coalesce(max(load_timestamp),''','1900-01-02 00:00:00','''',') as load_timestamp from ',item().table_name)",
+												"type": "Expression"
+											},
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "AzurePostgreSqlTable1",
+											"type": "DatasetReference",
+											"parameters": {
+												"postgress_hostname": {
+													"value": "@pipeline().parameters.postgress_hostname",
+													"type": "Expression"
+												},
+												"postgress_portnumber": {
+													"value": "@pipeline().parameters.postgress_portnumber",
+													"type": "Expression"
+												},
+												"postgress_database": {
+													"value": "@pipeline().parameters.postgress_database",
+													"type": "Expression"
+												},
+												"postgress_username": {
+													"value": "@pipeline().parameters.postgress_username",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								},
+								{
+									"name": "cmp_load-written_Timestamp",
+									"type": "IfCondition",
+									"dependsOn": [
+										{
+											"activity": "get_loadtimestamp",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@greater(string(activity('get_loadtimestamp').output.firstRow.load_timestamp),string(item().last_writtentimestamp))",
+											"type": "Expression"
+										},
+										"ifTrueActivities": [
+											{
+												"name": "Postgress-to-ADLS",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzurePostgreSqlSource",
+														"query": {
+															"value": "@concat('SELECT * FROM ',item().schema_name,'.',item().table_name,' WHERE coalesce(load_timestamp, ''','1900-01-02','''',') <= ''',activity('get_loadtimestamp').output.firstRow.load_timestamp,'''','and coalesce(load_timestamp, ''','1900-01-02','''',') > ''',item().last_writtentimestamp, '''')",
+															"type": "Expression"
+														},
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "ParquetSink",
+														"storeSettings": {
+															"type": "AzureBlobFSWriteSettings"
+														},
+														"formatSettings": {
+															"type": "ParquetWriteSettings",
+															"maxRowsPerFile": 100
+														}
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "AzurePostgreSqlTable1",
+														"type": "DatasetReference",
+														"parameters": {
+															"postgress_hostname": {
+																"value": "@pipeline().parameters.postgress_hostname",
+																"type": "Expression"
+															},
+															"postgress_portnumber": {
+																"value": "@pipeline().parameters.postgress_portnumber",
+																"type": "Expression"
+															},
+															"postgress_database": {
+																"value": "@pipeline().parameters.postgress_database",
+																"type": "Expression"
+															},
+															"postgress_username": {
+																"value": "@pipeline().parameters.postgress_username",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "Parquet1",
+														"type": "DatasetReference",
+														"parameters": {
+															"adls_url": {
+																"value": "@pipeline().parameters.adls_url",
+																"type": "Expression"
+															},
+															"table_name": {
+																"value": "@string(item().table_name)",
+																"type": "Expression"
+															},
+															"source": {
+																"value": "@pipeline().parameters.source",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "update_controlrunparams",
+												"type": "Lookup",
+												"dependsOn": [
+													{
+														"activity": "Postgress-to-ADLS",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzurePostgreSqlSource",
+														"query": {
+															"value": "@concat('update support.controlrunparams set last_writtentimestamp = ''',activity('get_loadtimestamp').output.firstRow.load_timestamp,'''',' where table_name = ''',item().table_name,'''','; Select 1 as abc')",
+															"type": "Expression"
+														},
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "AzurePostgreSqlTable1",
+														"type": "DatasetReference",
+														"parameters": {
+															"postgress_hostname": {
+																"value": "@pipeline().parameters.postgress_hostname",
+																"type": "Expression"
+															},
+															"postgress_portnumber": {
+																"value": "@pipeline().parameters.postgress_portnumber",
+																"type": "Expression"
+															},
+															"postgress_database": {
+																"value": "@pipeline().parameters.postgress_database",
+																"type": "Expression"
+															},
+															"postgress_username": {
+																"value": "@pipeline().parameters.postgress_username",
+																"type": "Expression"
+															}
+														}
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"postgress_hostname": {
+						"type": "string",
+						"defaultValue": "dev-zathura-edw.postgres.database.azure.com"
+					},
+					"postgress_portnumber": {
+						"type": "string",
+						"defaultValue": "5432"
+					},
+					"postgress_database": {
+						"type": "string",
+						"defaultValue": "Landing"
+					},
+					"postgress_username": {
+						"type": "string",
+						"defaultValue": "sv_pgdev"
+					},
+					"adls_url": {
+						"type": "string",
+						"defaultValue": "https://devzathura.dfs.core.windows.net/"
+					},
+					"source": {
+						"type": "string",
+						"defaultValue": "Postgress"
+					}
+				},
+				"variables": {
+					"lastWrittenTimestamp": {
+						"type": "String",
+						"defaultValue": "2023-01-05"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-03-15T07:14:21Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzurePostgreSqlTable1')]",
+				"[concat(variables('factoryId'), '/datasets/Parquet1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQLServer-to-adls')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get tables to load",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select QUOTENAME(schema_name) as schema_name,\nQUOTENAME(table_name) as table_name,\nlast_writtentimestamp as last_writtentimestamp\nfrom support.controlrunparams\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AzureSqlConnect_DS",
+								"type": "DatasetReference",
+								"parameters": {
+									"Sql_connectionstring": {
+										"value": "@pipeline().parameters.Sql_connectionstring",
+										"type": "Expression"
+									}
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Run for each table",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get tables to load",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get tables to load').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "get_loadtimestamp",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('Select coalesce(max(load_timestamp),''','1900-01-02 00:00:00','''',') as load_timestamp from ',item().table_name)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "AzureSqlConnect_DS",
+											"type": "DatasetReference",
+											"parameters": {
+												"Sql_connectionstring": {
+													"value": "@pipeline().parameters.Sql_connectionstring",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								},
+								{
+									"name": "cmp_load-written_Timestamp",
+									"type": "IfCondition",
+									"dependsOn": [
+										{
+											"activity": "get_loadtimestamp",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@greater(string(activity('get_loadtimestamp').output.firstRow.load_timestamp),string(item().last_writtentimestamp))",
+											"type": "Expression"
+										},
+										"ifTrueActivities": [
+											{
+												"name": "SQLServer to ADLS",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzureSqlSource",
+														"sqlReaderQuery": {
+															"value": "@concat('SELECT * FROM ',item().schema_name,'.',item().table_name,' WHERE coalesce(load_timestamp, ''','1900-01-02','''',') <=''',activity('get_loadtimestamp').output.firstRow.load_timestamp,'''',' and coalesce(load_timestamp, ''','1900-01-02','''',') > ''',item().last_writtentimestamp, '''')",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "ParquetSink",
+														"storeSettings": {
+															"type": "AzureBlobFSWriteSettings"
+														},
+														"formatSettings": {
+															"type": "ParquetWriteSettings",
+															"maxRowsPerFile": 100
+														}
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "AzureSqlConnect_DS",
+														"type": "DatasetReference",
+														"parameters": {
+															"Sql_connectionstring": {
+																"value": "@pipeline().parameters.Sql_connectionstring",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "Parquet1",
+														"type": "DatasetReference",
+														"parameters": {
+															"adls_url": {
+																"value": "@pipeline().parameters.adls_url",
+																"type": "Expression"
+															},
+															"table_name": {
+																"value": "@string(item().table_name)",
+																"type": "Expression"
+															},
+															"source": {
+																"value": "@pipeline().parameters.source",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "update_controlrunparams",
+												"type": "Lookup",
+												"dependsOn": [
+													{
+														"activity": "SQLServer to ADLS",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzureSqlSource",
+														"sqlReaderQuery": {
+															"value": "@concat('update support.controlrunparams set last_writtentimestamp = ''',activity('get_loadtimestamp').output.firstRow.load_timestamp,'''',' where table_name = ''',replace(replace(item().table_name,'[',''),']',''),'''','; Select 1 as abc')",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "AzureSqlConnect_DS",
+														"type": "DatasetReference",
+														"parameters": {
+															"Sql_connectionstring": {
+																"value": "@pipeline().parameters.Sql_connectionstring",
+																"type": "Expression"
+															}
+														}
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"Sql_connectionstring": {
+						"type": "string",
+						"defaultValue": "sql-connection"
+					},
+					"adls_url": {
+						"type": "string",
+						"defaultValue": "https://devzathura.dfs.core.windows.net/"
+					},
+					"source": {
+						"type": "string",
+						"defaultValue": "SQLServer"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSqlConnect_DS')]",
+				"[concat(variables('factoryId'), '/datasets/Parquet1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/get_runparams')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "get_env_params",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"dataset": {
+								"referenceName": "Excel_DS",
+								"type": "DatasetReference",
+								"parameters": {
+									"adls_url": {
+										"value": "@pipeline().parameters.adls_url",
+										"type": "Expression"
+									},
+									"environment": {
+										"value": "@pipeline().parameters.environment",
+										"type": "Expression"
+									}
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "collect_params",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "get_env_params",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('get_env_params').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "temp1",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "temp1",
+										"value": {
+											"value": "@concat(variables('temp2'),', \"',item().paramName,'\" : \"',item().paramValue,'\"')",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "temp2",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "temp1",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "temp2",
+										"value": {
+											"value": "@variables('temp1')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "return_config",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "collect_params",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "pipelineReturnValue",
+							"value": [
+								{
+									"key": "config",
+									"value": {
+										"type": "Expression",
+										"content": "@concat('{',variables('temp2'),'}')"
+									}
+								}
+							],
+							"setSystemVariable": true
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"environment": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"temp1": {
+						"type": "String"
+					},
+					"temp2": {
+						"type": "String",
+						"defaultValue": "\"1\":\"1\""
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Excel_DS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzurePostgreSqlTable1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "zathura_postgress_ls",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"postgress_hostname": {
+							"value": "@dataset().postgress_hostname",
+							"type": "Expression"
+						},
+						"postgress_portnumber": {
+							"value": "@dataset().postgress_portnumber",
+							"type": "Expression"
+						},
+						"postgress_database": {
+							"value": "@dataset().postgress_database",
+							"type": "Expression"
+						},
+						"postgress_username": {
+							"value": "@dataset().postgress_username",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"postgress_hostname": {
+						"type": "string"
+					},
+					"postgress_portnumber": {
+						"type": "string"
+					},
+					"postgress_database": {
+						"type": "string"
+					},
+					"postgress_username": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzurePostgreSqlTable",
+				"schema": [
+					{
+						"name": "id",
+						"type": "bigint",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "flight_code",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "source",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "destination",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "estimated_departure_time",
+						"type": "timestamp without time zone",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "departure_time",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "estimated_arrival_time",
+						"type": "timestamp without time zone",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "arrival_time",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "passenger_data",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "total_seats",
+						"type": "bigint",
+						"precision": 0,
+						"scale": 0
+					},
+					{
+						"name": "status",
+						"type": "text",
+						"precision": 0,
+						"scale": 0
+					}
+				],
+				"typeProperties": {
+					"schema": "",
+					"table": ""
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/zathura_postgress_ls')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlConnect_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase_LS",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"Sql_connectionstring": {
+							"value": "@dataset().Sql_connectionstring",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"Sql_connectionstring": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Excel_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "adls_parquet",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"adls_url": {
+							"value": "@dataset().adls_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"environment": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "Sheet1",
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "zathura_config.xlsx",
+						"folderPath": {
+							"value": "@concat('config/',dataset().environment)",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "zathura-dev",
+							"type": "Expression"
+						}
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Parquet1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "adls_parquet",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"adls_url": {
+							"value": "@dataset().adls_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"table_name": {
+						"type": "string"
+					},
+					"source": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@concat('raw/',dataset().source,'/',dataset().table_name,'/Year=',formatDateTime(utcNow(),'yyyy'),'/Month=',formatDateTime(utcNow(),'MM'),'/Day=',formatDateTime(utcNow(),'dd'),'/')",
+							"type": "Expression"
+						},
+						"fileSystem": "zathura-dev"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureKV_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('AzureKV_LS_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabase_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"Sql_connectionstring": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "AzureKV_LS",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "[parameters('AzureSqlDatabase_LS_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
+					},
+					"alwaysEncryptedSettings": {
+						"alwaysEncryptedAkvAuthType": "ManagedIdentity"
+					}
+				},
+				"connectVia": {
+					"referenceName": "SHIR",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SHIR')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureKV_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/adls_parquet')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('adls_parquet_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('adls_parquet_accountKey')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "SHIR",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SHIR')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/zathura_postgress_ls')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"postgress_hostname": {
+						"type": "string"
+					},
+					"postgress_portnumber": {
+						"type": "string"
+					},
+					"postgress_database": {
+						"type": "string"
+					},
+					"postgress_username": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzurePostgreSql",
+				"typeProperties": {
+					"connectionString": "[parameters('zathura_postgress_ls_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "SHIR",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SHIR')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SHIR')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/zathura-SHIR')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		}
+	]
+}

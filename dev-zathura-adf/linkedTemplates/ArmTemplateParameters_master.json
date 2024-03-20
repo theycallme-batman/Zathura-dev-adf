@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "dev-zathura-adf"
+		},
+		"adls_parquet_accountKey": {
+			"value": ""
+		},
+		"zathura_postgress_ls_connectionString": {
+			"value": ""
+		},
+		"AzureKV_LS_properties_typeProperties_baseUrl": {
+			"value": "https://zathura-key-vault.vault.azure.net/"
+		},
+		"AzureSqlDatabase_LS_properties_typeProperties_connectionString_secretName": {
+			"value": "@linkedService().Sql_connectionstring"
+		},
+		"adls_parquet_properties_typeProperties_url": {
+			"value": "@{linkedService().adls_url}"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
