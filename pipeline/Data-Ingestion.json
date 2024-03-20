@@ -7,7 +7,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "SQLServer-to-adls Data Ingestion",
+						"activity": "set_config",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -83,7 +83,7 @@
 				}
 			},
 			{
-				"name": "ErrorHandling",
+				"name": "ErrorHandling2",
 				"type": "ExecutePipeline",
 				"state": "Inactive",
 				"onInactiveMarkAs": "Succeeded",
@@ -91,8 +91,7 @@
 					{
 						"activity": "Postgress-to-adls Data Ingestion",
 						"dependencyConditions": [
-							"Failed",
-							"Skipped"
+							"Failed"
 						]
 					}
 				],
@@ -112,7 +111,7 @@
 							"type": "Expression"
 						},
 						"Error": {
-							"value": "@concat('SQLServer-to_adls',activity('SQLServer-to-adls Data Ingestion').error?.message,'\\n','Postgress-to-adls',activity('Postgress-to-adls Data Ingestion').error?.message)",
+							"value": "@concat('Postgress-to-adls Errors -',activity('Postgress-to-adls Data Ingestion').error?.message)",
 							"type": "Expression"
 						},
 						"pipeline_name": {
@@ -169,6 +168,45 @@
 					"value": {
 						"value": "@activity('get_env_params').output.pipelineReturnValue.config",
 						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ErrorHandling1",
+				"type": "ExecutePipeline",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "SQLServer-to-adls Data Ingestion",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "GenericErrorHandling",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"receiver": {
+							"value": "@json(variables('config')).recipients",
+							"type": "Expression"
+						},
+						"Error": {
+							"value": "@concat('SQLServer-to_adls Errors- ',activity('SQLServer-to-adls Data Ingestion').error?.message)",
+							"type": "Expression"
+						},
+						"pipeline_name": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						}
 					}
 				}
 			}
