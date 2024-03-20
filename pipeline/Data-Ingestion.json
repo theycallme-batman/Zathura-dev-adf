@@ -7,7 +7,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "SQLServer-to-adls Data Ingestion",
+						"activity": "set_config",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -25,23 +25,23 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"postgress_hostname": {
-							"value": "@pipeline().parameters.postgress_hostname",
+							"value": "@json(variables('config')).postgress_hostname",
 							"type": "Expression"
 						},
 						"postgress_portnumber": {
-							"value": "@pipeline().parameters.postgress_port",
+							"value": "@json(variables('config')).postgress_port",
 							"type": "Expression"
 						},
 						"postgress_database": {
-							"value": "@pipeline().parameters.postgress_database",
+							"value": "@json(variables('config')).postgress_database",
 							"type": "Expression"
 						},
 						"postgress_username": {
-							"value": "@pipeline().parameters.postgress_username",
+							"value": "@json(variables('config')).postgress_username",
 							"type": "Expression"
 						},
 						"adls_url": {
-							"value": "@pipeline().parameters.adls_url",
+							"value": "@json(variables('config')).adls_url",
 							"type": "Expression"
 						},
 						"source": "Postgress"
@@ -51,7 +51,14 @@
 			{
 				"name": "SQLServer-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "set_config",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureInput": false
 				},
@@ -64,11 +71,11 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"Sql_connectionstring": {
-							"value": "@pipeline().parameters.sql_connectionstring",
+							"value": "@json(variables('config')).sql_connectionstring",
 							"type": "Expression"
 						},
 						"adls_url": {
-							"value": "@pipeline().parameters.adls_url",
+							"value": "@json(variables('config')).adls_url",
 							"type": "Expression"
 						},
 						"source": "SQLServer"
@@ -76,14 +83,13 @@
 				}
 			},
 			{
-				"name": "ErrorHandling",
+				"name": "ErrorHandling2",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
 						"activity": "Postgress-to-adls Data Ingestion",
 						"dependencyConditions": [
-							"Failed",
-							"Skipped"
+							"Failed"
 						]
 					}
 				],
@@ -99,11 +105,98 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"receiver": {
-							"value": "@pipeline().parameters.receiver",
+							"value": "@json(variables('config')).recipients",
 							"type": "Expression"
 						},
 						"Error": {
-							"value": "@concat('SQLServer-to_adls',activity('SQLServer-to-adls Data Ingestion').error?.message,'\\n','Postgress-to-adls',activity('Postgress-to-adls Data Ingestion').error?.message)",
+							"value": "@concat('Postgress-to-adls Errors -',activity('Postgress-to-adls Data Ingestion').error?.message)",
+							"type": "Expression"
+						},
+						"pipeline_name": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "get_env_params",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "get_runparams",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"adls_url": {
+							"value": "@pipeline().parameters.adls_url",
+							"type": "Expression"
+						},
+						"environment": {
+							"value": "@pipeline().parameters.environment",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "set_config",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "get_env_params",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "config",
+					"value": {
+						"value": "@activity('get_env_params').output.pipelineReturnValue.config",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ErrorHandling1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "SQLServer-to-adls Data Ingestion",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "GenericErrorHandling",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"receiver": {
+							"value": "@json(variables('config')).recipients",
+							"type": "Expression"
+						},
+						"Error": {
+							"value": "@concat('SQLServer-to_adls Errors- ',activity('SQLServer-to-adls Data Ingestion').error?.message)",
 							"type": "Expression"
 						},
 						"pipeline_name": {
@@ -115,33 +208,18 @@
 			}
 		],
 		"parameters": {
-			"receiver": {
-				"type": "string",
-				"defaultValue": "abc@gmail.com"
-			},
-			"postgress_hostname": {
-				"type": "string",
-				"defaultValue": "dev-zathura-edw.postgres.database.azure.com"
-			},
-			"postgress_port": {
-				"type": "string",
-				"defaultValue": "5432"
-			},
-			"postgress_database": {
-				"type": "string",
-				"defaultValue": "Landing"
-			},
-			"postgress_username": {
-				"type": "string",
-				"defaultValue": "sv_pgdev"
-			},
 			"adls_url": {
 				"type": "string",
 				"defaultValue": "https://devzathura.dfs.core.windows.net/"
 			},
-			"sql_connectionstring": {
+			"environment": {
 				"type": "string",
-				"defaultValue": "sql-connection"
+				"defaultValue": "dev"
+			}
+		},
+		"variables": {
+			"config": {
+				"type": "String"
 			}
 		},
 		"annotations": []

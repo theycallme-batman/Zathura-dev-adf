@@ -1,0 +1,42 @@
+{
+	"name": "Excel_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "adls_parquet",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"adls_url": {
+					"value": "@dataset().adls_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"adls_url": {
+				"type": "string"
+			},
+			"environment": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"sheetName": "Sheet1",
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "zathura_config.xlsx",
+				"folderPath": {
+					"value": "@concat('config/',dataset().environment)",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "zathura-dev",
+					"type": "Expression"
+				}
+			},
+			"firstRowAsHeader": true
+		},
+		"schema": []
+	}
+}
