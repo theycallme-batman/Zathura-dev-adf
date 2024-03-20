@@ -27,23 +27,23 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"postgress_hostname": {
-							"value": "@pipeline().parameters.postgress_hostname",
+							"value": "@json(variables('config')).postgress_hostname",
 							"type": "Expression"
 						},
 						"postgress_portnumber": {
-							"value": "@pipeline().parameters.postgress_port",
+							"value": "@json(variables('config')).postgress_port",
 							"type": "Expression"
 						},
 						"postgress_database": {
-							"value": "@pipeline().parameters.postgress_database",
+							"value": "@json(variables('config')).postgress_database",
 							"type": "Expression"
 						},
 						"postgress_username": {
-							"value": "@pipeline().parameters.postgress_username",
+							"value": "@json(variables('config')).postgress_username",
 							"type": "Expression"
 						},
 						"adls_url": {
-							"value": "@pipeline().parameters.adls_url",
+							"value": "@json(variables('config')).adls_url",
 							"type": "Expression"
 						},
 						"source": "Postgress"
@@ -55,7 +55,14 @@
 				"type": "ExecutePipeline",
 				"state": "Inactive",
 				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "convert_to_ json-config",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureInput": false
 				},
@@ -68,11 +75,11 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"Sql_connectionstring": {
-							"value": "@pipeline().parameters.sql_connectionstring",
+							"value": "@json(variables('config')).sql_connectionstring",
 							"type": "Expression"
 						},
 						"adls_url": {
-							"value": "@pipeline().parameters.adls_url",
+							"value": "@json(variables('config')).adls_url",
 							"type": "Expression"
 						},
 						"source": "SQLServer"
@@ -105,7 +112,7 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"receiver": {
-							"value": "@pipeline().parameters.receiver",
+							"value": "@json(variables('config')).recipients",
 							"type": "Expression"
 						},
 						"Error": {
@@ -120,7 +127,7 @@
 				}
 			},
 			{
-				"name": "Lookup1",
+				"name": "get_env_params",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -147,40 +154,124 @@
 							"adls_url": {
 								"value": "@pipeline().parameters.adls_url",
 								"type": "Expression"
+							},
+							"environment": {
+								"value": "@pipeline().parameters.environment",
+								"type": "Expression"
 							}
 						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "collect_params",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "get_env_params",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('get_env_params').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "temp1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "temp1",
+								"value": {
+									"value": "@concat(variables('temp2'),', \"',item().paramName,'\" : \"',item().paramValue,'\"')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "temp2",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "temp1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "temp2",
+								"value": {
+									"value": "@variables('temp1')",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "convert_to_ json-config",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "collect_params",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "config",
+					"value": {
+						"value": "@concat('{',variables('temp2'),'}')",
+						"type": "Expression"
 					}
 				}
 			}
 		],
 		"parameters": {
-			"receiver": {
-				"type": "string",
-				"defaultValue": "abc@gmail.com"
-			},
-			"postgress_hostname": {
-				"type": "string",
-				"defaultValue": "dev-zathura-edw.postgres.database.azure.com"
-			},
-			"postgress_port": {
-				"type": "string",
-				"defaultValue": "5432"
-			},
-			"postgress_database": {
-				"type": "string",
-				"defaultValue": "Landing"
-			},
-			"postgress_username": {
-				"type": "string",
-				"defaultValue": "sv_pgdev"
-			},
 			"adls_url": {
 				"type": "string",
 				"defaultValue": "https://devzathura.dfs.core.windows.net/"
 			},
-			"sql_connectionstring": {
+			"environment": {
 				"type": "string",
-				"defaultValue": "sql-connection"
+				"defaultValue": "dev"
+			}
+		},
+		"variables": {
+			"temp1": {
+				"type": "String"
+			},
+			"temp2": {
+				"type": "String",
+				"defaultValue": "\"1\":\"1\""
+			},
+			"config": {
+				"type": "String"
 			}
 		},
 		"annotations": []

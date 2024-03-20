@@ -14,6 +14,9 @@
 		"parameters": {
 			"adls_url": {
 				"type": "string"
+			},
+			"environment": {
+				"type": "string"
 			}
 		},
 		"annotations": [],
@@ -23,7 +26,10 @@
 			"location": {
 				"type": "AzureBlobFSLocation",
 				"fileName": "zathura_config.xlsx",
-				"folderPath": "config",
+				"folderPath": {
+					"value": "@concat('config/',dataset().environment)",
+					"type": "Expression"
+				},
 				"fileSystem": {
 					"value": "zathura-dev",
 					"type": "Expression"
