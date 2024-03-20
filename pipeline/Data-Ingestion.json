@@ -57,7 +57,7 @@
 				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
-						"activity": "convert_to_ json-config",
+						"activity": "Execute Pipeline1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -127,112 +127,37 @@
 				}
 			},
 			{
-				"name": "get_env_params",
-				"type": "Lookup",
+				"name": "Execute Pipeline1",
+				"type": "ExecutePipeline",
 				"dependsOn": [],
 				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
 					"secureInput": false
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"source": {
-						"type": "ExcelSource",
-						"storeSettings": {
-							"type": "AzureBlobFSReadSettings",
-							"recursive": true,
-							"enablePartitionDiscovery": false
-						}
+					"pipeline": {
+						"referenceName": "get_runparams",
+						"type": "PipelineReference"
 					},
-					"dataset": {
-						"referenceName": "Excel_DS",
-						"type": "DatasetReference",
-						"parameters": {
-							"adls_url": {
-								"value": "@pipeline().parameters.adls_url",
-								"type": "Expression"
-							},
-							"environment": {
-								"value": "@pipeline().parameters.environment",
-								"type": "Expression"
-							}
-						}
-					},
-					"firstRowOnly": false
-				}
-			},
-			{
-				"name": "collect_params",
-				"type": "ForEach",
-				"dependsOn": [
-					{
-						"activity": "get_env_params",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"items": {
-						"value": "@activity('get_env_params').output.value",
-						"type": "Expression"
-					},
-					"isSequential": true,
-					"activities": [
-						{
-							"name": "temp1",
-							"type": "SetVariable",
-							"dependsOn": [],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "temp1",
-								"value": {
-									"value": "@concat(variables('temp2'),', \"',item().paramName,'\" : \"',item().paramValue,'\"')",
-									"type": "Expression"
-								}
-							}
+					"waitOnCompletion": true,
+					"parameters": {
+						"adls_url": {
+							"value": "@pipeline().parameters.adls_url",
+							"type": "Expression"
 						},
-						{
-							"name": "temp2",
-							"type": "SetVariable",
-							"dependsOn": [
-								{
-									"activity": "temp1",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "temp2",
-								"value": {
-									"value": "@variables('temp1')",
-									"type": "Expression"
-								}
-							}
+						"environment": {
+							"value": "@pipeline().parameters.environment",
+							"type": "Expression"
 						}
-					]
+					}
 				}
 			},
 			{
-				"name": "convert_to_ json-config",
+				"name": "Set variable1",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "collect_params",
+						"activity": "Execute Pipeline1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -244,9 +169,9 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"variableName": "config",
+					"variableName": "test",
 					"value": {
-						"value": "@concat('{',variables('temp2'),'}')",
+						"value": "@activity('Execute Pipeline1').postgress_hostname",
 						"type": "Expression"
 					}
 				}
@@ -271,6 +196,9 @@
 				"defaultValue": "\"1\":\"1\""
 			},
 			"config": {
+				"type": "String"
+			},
+			"test": {
 				"type": "String"
 			}
 		},
