@@ -22,7 +22,7 @@
 						"partitionOption": "None"
 					},
 					"dataset": {
-						"referenceName": "AzureSqlConnect_DS",
+						"referenceName": "AzureSqlConnectDataIngestion_DS",
 						"type": "DatasetReference",
 						"parameters": {
 							"Sql_connectionstring": {
@@ -76,7 +76,7 @@
 									"partitionOption": "None"
 								},
 								"dataset": {
-									"referenceName": "AzureSqlConnect_DS",
+									"referenceName": "AzureSqlConnectDataIngestion_DS",
 									"type": "DatasetReference",
 									"parameters": {
 										"Sql_connectionstring": {
@@ -149,7 +149,7 @@
 										},
 										"inputs": [
 											{
-												"referenceName": "AzureSqlConnect_DS",
+												"referenceName": "AzureSqlConnectDataIngestion_DS",
 												"type": "DatasetReference",
 												"parameters": {
 													"Sql_connectionstring": {
@@ -161,7 +161,7 @@
 										],
 										"outputs": [
 											{
-												"referenceName": "Parquet1",
+												"referenceName": "DataIngestion_Parquet_DS",
 												"type": "DatasetReference",
 												"parameters": {
 													"adls_url": {
@@ -210,7 +210,7 @@
 												"partitionOption": "None"
 											},
 											"dataset": {
-												"referenceName": "AzureSqlConnect_DS",
+												"referenceName": "AzureSqlConnectDataIngestion_DS",
 												"type": "DatasetReference",
 												"parameters": {
 													"Sql_connectionstring": {

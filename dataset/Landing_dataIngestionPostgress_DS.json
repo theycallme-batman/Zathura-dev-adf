@@ -1,5 +1,5 @@
 {
-	"name": "AzurePostgreSqlTable1",
+	"name": "Landing_dataIngestionPostgress_DS",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "zathura_postgress_ls",

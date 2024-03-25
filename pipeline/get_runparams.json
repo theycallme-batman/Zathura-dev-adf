@@ -24,7 +24,7 @@
 						}
 					},
 					"dataset": {
-						"referenceName": "Excel_DS",
+						"referenceName": "DataIngestion_Excel_DS",
 						"type": "DatasetReference",
 						"parameters": {
 							"adls_url": {
