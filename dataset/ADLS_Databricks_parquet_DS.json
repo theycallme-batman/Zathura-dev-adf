@@ -1,0 +1,84 @@
+{
+	"name": "ADLS_Databricks_parquet_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "adls_parquet",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"adls_url": {
+					"value": "@dataset().adls_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"adls_url": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "tables/silver_flights",
+				"fileSystem": "databricks-storage-dev"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": [
+			{
+				"name": "id",
+				"type": "INT64"
+			},
+			{
+				"name": "flight_code",
+				"type": "UTF8"
+			},
+			{
+				"name": "source_airport",
+				"type": "UTF8"
+			},
+			{
+				"name": "destination_airport",
+				"type": "UTF8"
+			},
+			{
+				"name": "source_city",
+				"type": "UTF8"
+			},
+			{
+				"name": "destination_city",
+				"type": "UTF8"
+			},
+			{
+				"name": "estimated_departure_time",
+				"type": "INT96"
+			},
+			{
+				"name": "departure_time",
+				"type": "UTF8"
+			},
+			{
+				"name": "estimated_arrival_time",
+				"type": "INT96"
+			},
+			{
+				"name": "arrival_time",
+				"type": "UTF8"
+			},
+			{
+				"name": "total_passengers",
+				"type": "INT64"
+			},
+			{
+				"name": "status",
+				"type": "UTF8"
+			},
+			{
+				"name": "flight_date",
+				"type": "UTF8"
+			}
+		]
+	}
+}
