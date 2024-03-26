@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "dev-zathura-adf"
 		},
+		"ADLS_AutoIR_LS_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ADLS_AutoIR_LS'"
+		},
+		"adls_azure_LS_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'adls_azure_LS'"
+		},
 		"adls_parquet_accountKey": {
 			"type": "secureString",
 			"metadata": "Secure string for 'accountKey' of 'adls_parquet'"
@@ -14,6 +22,10 @@
 		"zathura_postgress_ls_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'zathura_postgress_ls'"
+		},
+		"ADLS_AutoIR_LS_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://devzathura.dfs.core.windows.net/"
 		},
 		"AzureKV_LS_properties_typeProperties_baseUrl": {
 			"type": "string",
@@ -23,9 +35,33 @@
 			"type": "string",
 			"defaultValue": "@linkedService().Sql_connectionstring"
 		},
+		"SQLDatabase_AutoIR_LS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"SQL_Auto_IR_LS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"adls_azure_LS_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "@{linkedService().adls_url}"
+		},
 		"adls_parquet_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "@{linkedService().adls_url}"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url": {
+			"type": "string",
+			"defaultValue": "https://devzathura.dfs.core.windows.net/"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"Write_data_to-SQLServer_properties_typeProperties_scope": {
+			"type": "string",
+			"defaultValue": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura"
 		},
 		"containerUri": {
 			"type": "string",
@@ -54,17 +90,35 @@
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
 					},
+					"ADLS_AutoIR_LS_accountKey": {
+						"value": "[parameters('ADLS_AutoIR_LS_accountKey')]"
+					},
+					"adls_azure_LS_accountKey": {
+						"value": "[parameters('adls_azure_LS_accountKey')]"
+					},
 					"adls_parquet_accountKey": {
 						"value": "[parameters('adls_parquet_accountKey')]"
 					},
 					"zathura_postgress_ls_connectionString": {
 						"value": "[parameters('zathura_postgress_ls_connectionString')]"
 					},
+					"ADLS_AutoIR_LS_properties_typeProperties_url": {
+						"value": "[parameters('ADLS_AutoIR_LS_properties_typeProperties_url')]"
+					},
 					"AzureKV_LS_properties_typeProperties_baseUrl": {
 						"value": "[parameters('AzureKV_LS_properties_typeProperties_baseUrl')]"
 					},
+					"adls_azure_LS_properties_typeProperties_url": {
+						"value": "[parameters('adls_azure_LS_properties_typeProperties_url')]"
+					},
 					"AzureSqlDatabase_LS_properties_typeProperties_connectionString_secretName": {
 						"value": "[parameters('AzureSqlDatabase_LS_properties_typeProperties_connectionString_secretName')]"
+					},
+					"SQLDatabase_AutoIR_LS_properties_typeProperties_connectionString_secretName": {
+						"value": "[parameters('SQLDatabase_AutoIR_LS_properties_typeProperties_connectionString_secretName')]"
+					},
+					"SQL_Auto_IR_LS_properties_typeProperties_connectionString_secretName": {
+						"value": "[parameters('SQL_Auto_IR_LS_properties_typeProperties_connectionString_secretName')]"
 					},
 					"adls_parquet_properties_typeProperties_url": {
 						"value": "[parameters('adls_parquet_properties_typeProperties_url')]"
@@ -72,6 +126,35 @@
 				}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "dev-zathura-adf_ArmTemplate_1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_1.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url": {
+						"value": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url')]"
+					},
+					"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring": {
+						"value": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring')]"
+					},
+					"Write_data_to-SQLServer_properties_typeProperties_scope": {
+						"value": "[parameters('Write_data_to-SQLServer_properties_typeProperties_scope')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'dev-zathura-adf_ArmTemplate_0')]"
+			]
 		}
 	]
 }

@@ -5,11 +5,20 @@
 		"factoryName": {
 			"value": "dev-zathura-adf"
 		},
+		"ADLS_AutoIR_LS_accountKey": {
+			"value": ""
+		},
+		"adls_azure_LS_accountKey": {
+			"value": ""
+		},
 		"adls_parquet_accountKey": {
 			"value": ""
 		},
 		"zathura_postgress_ls_connectionString": {
 			"value": ""
+		},
+		"ADLS_AutoIR_LS_properties_typeProperties_url": {
+			"value": "https://devzathura.dfs.core.windows.net/"
 		},
 		"AzureKV_LS_properties_typeProperties_baseUrl": {
 			"value": "https://zathura-key-vault.vault.azure.net/"
@@ -17,8 +26,26 @@
 		"AzureSqlDatabase_LS_properties_typeProperties_connectionString_secretName": {
 			"value": "@linkedService().Sql_connectionstring"
 		},
+		"SQLDatabase_AutoIR_LS_properties_typeProperties_connectionString_secretName": {
+			"value": "sql-connection"
+		},
+		"SQL_Auto_IR_LS_properties_typeProperties_connectionString_secretName": {
+			"value": "sql-connection"
+		},
+		"adls_azure_LS_properties_typeProperties_url": {
+			"value": "@{linkedService().adls_url}"
+		},
 		"adls_parquet_properties_typeProperties_url": {
 			"value": "@{linkedService().adls_url}"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url": {
+			"value": "https://devzathura.dfs.core.windows.net/"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring": {
+			"value": "sql-connection"
+		},
+		"Write_data_to-SQLServer_properties_typeProperties_scope": {
+			"value": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura"
 		},
 		"containerUri": {
 			"value": ""

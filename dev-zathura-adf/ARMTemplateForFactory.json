@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "dev-zathura-adf"
 		},
+		"ADLS_AutoIR_LS_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ADLS_AutoIR_LS'"
+		},
+		"adls_azure_LS_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'adls_azure_LS'"
+		},
 		"adls_parquet_accountKey": {
 			"type": "secureString",
 			"metadata": "Secure string for 'accountKey' of 'adls_parquet'"
@@ -14,6 +22,10 @@
 		"zathura_postgress_ls_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'zathura_postgress_ls'"
+		},
+		"ADLS_AutoIR_LS_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://devzathura.dfs.core.windows.net/"
 		},
 		"AzureKV_LS_properties_typeProperties_baseUrl": {
 			"type": "string",
@@ -23,15 +35,130 @@
 			"type": "string",
 			"defaultValue": "@linkedService().Sql_connectionstring"
 		},
+		"SQLDatabase_AutoIR_LS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"SQL_Auto_IR_LS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"adls_azure_LS_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "@{linkedService().adls_url}"
+		},
 		"adls_parquet_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "@{linkedService().adls_url}"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url": {
+			"type": "string",
+			"defaultValue": "https://devzathura.dfs.core.windows.net/"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"Write_data_to-SQLServer_properties_typeProperties_scope": {
+			"type": "string",
+			"defaultValue": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ADLS-to-SQL')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "ADLS-to-SQLSerevr",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ParquetSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": "tables/silver_flights",
+									"wildcardFileName": "*parquet",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "ParquetReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ADLS_Databricks_parquet_DS",
+								"type": "DatasetReference",
+								"parameters": {
+									"adls_url": {
+										"value": "@pipeline().parameters.adls_url",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SQLDatabase_AutoIR_DS",
+								"type": "DatasetReference",
+								"parameters": {
+									"Sql_connectionstring": {
+										"value": "@pipeline().parameters.Sql_connectionstring",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"Sql_connectionstring": {
+						"type": "string"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ADLS_Databricks_parquet_DS')]",
+				"[concat(variables('factoryId'), '/datasets/SQLDatabase_AutoIR_DS')]"
+			]
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Data-Ingestion')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
@@ -121,6 +248,8 @@
 					{
 						"name": "ErrorHandling2",
 						"type": "ExecutePipeline",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
 						"dependsOn": [
 							{
 								"activity": "Postgress-to-adls Data Ingestion",
@@ -208,6 +337,8 @@
 					{
 						"name": "ErrorHandling1",
 						"type": "ExecutePipeline",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
 						"dependsOn": [
 							{
 								"activity": "SQLServer-to-adls Data Ingestion",
@@ -342,7 +473,7 @@
 								"partitionOption": "None"
 							},
 							"dataset": {
-								"referenceName": "AzurePostgreSqlTable1",
+								"referenceName": "Landing_dataIngestionPostgress_DS",
 								"type": "DatasetReference",
 								"parameters": {
 									"postgress_hostname": {
@@ -407,7 +538,7 @@
 											"partitionOption": "None"
 										},
 										"dataset": {
-											"referenceName": "AzurePostgreSqlTable1",
+											"referenceName": "Landing_dataIngestionPostgress_DS",
 											"type": "DatasetReference",
 											"parameters": {
 												"postgress_hostname": {
@@ -491,7 +622,7 @@
 												},
 												"inputs": [
 													{
-														"referenceName": "AzurePostgreSqlTable1",
+														"referenceName": "Landing_dataIngestionPostgress_DS",
 														"type": "DatasetReference",
 														"parameters": {
 															"postgress_hostname": {
@@ -515,7 +646,7 @@
 												],
 												"outputs": [
 													{
-														"referenceName": "Parquet1",
+														"referenceName": "DataIngestion_Parquet_DS",
 														"type": "DatasetReference",
 														"parameters": {
 															"adls_url": {
@@ -563,7 +694,7 @@
 														"partitionOption": "None"
 													},
 													"dataset": {
-														"referenceName": "AzurePostgreSqlTable1",
+														"referenceName": "Landing_dataIngestionPostgress_DS",
 														"type": "DatasetReference",
 														"parameters": {
 															"postgress_hostname": {
@@ -632,8 +763,8 @@
 				"lastPublishTime": "2024-03-15T07:14:21Z"
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/AzurePostgreSqlTable1')]",
-				"[concat(variables('factoryId'), '/datasets/Parquet1')]"
+				"[concat(variables('factoryId'), '/datasets/Landing_dataIngestionPostgress_DS')]",
+				"[concat(variables('factoryId'), '/datasets/DataIngestion_Parquet_DS')]"
 			]
 		},
 		{
@@ -662,7 +793,7 @@
 								"partitionOption": "None"
 							},
 							"dataset": {
-								"referenceName": "AzureSqlConnect_DS",
+								"referenceName": "AzureSqlConnectDataIngestion_DS",
 								"type": "DatasetReference",
 								"parameters": {
 									"Sql_connectionstring": {
@@ -716,7 +847,7 @@
 											"partitionOption": "None"
 										},
 										"dataset": {
-											"referenceName": "AzureSqlConnect_DS",
+											"referenceName": "AzureSqlConnectDataIngestion_DS",
 											"type": "DatasetReference",
 											"parameters": {
 												"Sql_connectionstring": {
@@ -789,7 +920,7 @@
 												},
 												"inputs": [
 													{
-														"referenceName": "AzureSqlConnect_DS",
+														"referenceName": "AzureSqlConnectDataIngestion_DS",
 														"type": "DatasetReference",
 														"parameters": {
 															"Sql_connectionstring": {
@@ -801,7 +932,7 @@
 												],
 												"outputs": [
 													{
-														"referenceName": "Parquet1",
+														"referenceName": "DataIngestion_Parquet_DS",
 														"type": "DatasetReference",
 														"parameters": {
 															"adls_url": {
@@ -850,7 +981,7 @@
 														"partitionOption": "None"
 													},
 													"dataset": {
-														"referenceName": "AzureSqlConnect_DS",
+														"referenceName": "AzureSqlConnectDataIngestion_DS",
 														"type": "DatasetReference",
 														"parameters": {
 															"Sql_connectionstring": {
@@ -888,8 +1019,8 @@
 				"annotations": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/AzureSqlConnect_DS')]",
-				"[concat(variables('factoryId'), '/datasets/Parquet1')]"
+				"[concat(variables('factoryId'), '/datasets/AzureSqlConnectDataIngestion_DS')]",
+				"[concat(variables('factoryId'), '/datasets/DataIngestion_Parquet_DS')]"
 			]
 		},
 		{
@@ -920,7 +1051,7 @@
 								}
 							},
 							"dataset": {
-								"referenceName": "Excel_DS",
+								"referenceName": "DataIngestion_Excel_DS",
 								"type": "DatasetReference",
 								"parameters": {
 									"adls_url": {
@@ -1053,11 +1184,221 @@
 				"annotations": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/Excel_DS')]"
+				"[concat(variables('factoryId'), '/datasets/DataIngestion_Excel_DS')]"
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/AzurePostgreSqlTable1')]",
+			"name": "[concat(parameters('factoryName'), '/ADLS_Databricks_parquet_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "adls_parquet",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"adls_url": {
+							"value": "@dataset().adls_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "tables/silver_flights",
+						"fileSystem": "databricks-storage-dev"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": [
+					{
+						"name": "id",
+						"type": "INT64"
+					},
+					{
+						"name": "flight_code",
+						"type": "UTF8"
+					},
+					{
+						"name": "source_airport",
+						"type": "UTF8"
+					},
+					{
+						"name": "destination_airport",
+						"type": "UTF8"
+					},
+					{
+						"name": "source_city",
+						"type": "UTF8"
+					},
+					{
+						"name": "destination_city",
+						"type": "UTF8"
+					},
+					{
+						"name": "estimated_departure_time",
+						"type": "INT96"
+					},
+					{
+						"name": "departure_time",
+						"type": "UTF8"
+					},
+					{
+						"name": "estimated_arrival_time",
+						"type": "INT96"
+					},
+					{
+						"name": "arrival_time",
+						"type": "UTF8"
+					},
+					{
+						"name": "total_passengers",
+						"type": "INT64"
+					},
+					{
+						"name": "status",
+						"type": "UTF8"
+					},
+					{
+						"name": "flight_date",
+						"type": "UTF8"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlConnectDataIngestion_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase_LS",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"Sql_connectionstring": {
+							"value": "@dataset().Sql_connectionstring",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"Sql_connectionstring": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataIngestion_Excel_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "adls_parquet",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"adls_url": {
+							"value": "@dataset().adls_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"environment": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "Sheet1",
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "zathura_config.xlsx",
+						"folderPath": {
+							"value": "@concat('config/',dataset().environment)",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "zathura-dev",
+							"type": "Expression"
+						}
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataIngestion_Parquet_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "adls_parquet",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"adls_url": {
+							"value": "@dataset().adls_url",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"table_name": {
+						"type": "string"
+					},
+					"source": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@concat('raw/',dataset().source,'/',dataset().table_name,'/Year=',formatDateTime(utcNow(),'yyyy'),'/Month=',formatDateTime(utcNow(),'MM'),'/Day=',formatDateTime(utcNow(),'dd'),'/')",
+							"type": "Expression"
+						},
+						"fileSystem": "zathura-dev"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Landing_dataIngestionPostgress_DS')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -1177,7 +1518,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/AzureSqlConnect_DS')]",
+			"name": "[concat(parameters('factoryName'), '/SQLDatabase_AutoIR_DS')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -1198,104 +1539,100 @@
 				},
 				"annotations": [],
 				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {}
+				"schema": [
+					{
+						"name": "id",
+						"type": "bigint",
+						"precision": 19
+					},
+					{
+						"name": "flight_code",
+						"type": "varchar"
+					},
+					{
+						"name": "flight_date",
+						"type": "date"
+					},
+					{
+						"name": "source_airport",
+						"type": "varchar"
+					},
+					{
+						"name": "destination_airport",
+						"type": "varchar"
+					},
+					{
+						"name": "source_city",
+						"type": "varchar"
+					},
+					{
+						"name": "destination_city",
+						"type": "varchar"
+					},
+					{
+						"name": "estimated_departure_time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "departure_time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "estimated_arrival_time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "arrival_time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "total_passengers",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "status",
+						"type": "varchar"
+					},
+					{
+						"name": "run_id",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "flights"
+				}
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase_LS')]"
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Excel_DS')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/ADLS_AutoIR_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "adls_parquet",
-					"type": "LinkedServiceReference",
-					"parameters": {
-						"adls_url": {
-							"value": "@dataset().adls_url",
-							"type": "Expression"
-						}
-					}
-				},
-				"parameters": {
-					"adls_url": {
-						"type": "string"
-					},
-					"environment": {
-						"type": "string"
-					}
-				},
 				"annotations": [],
-				"type": "Excel",
+				"type": "AzureBlobFS",
 				"typeProperties": {
-					"sheetName": "Sheet1",
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileName": "zathura_config.xlsx",
-						"folderPath": {
-							"value": "@concat('config/',dataset().environment)",
-							"type": "Expression"
-						},
-						"fileSystem": {
-							"value": "zathura-dev",
-							"type": "Expression"
-						}
-					},
-					"firstRowAsHeader": true
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Parquet1')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "adls_parquet",
-					"type": "LinkedServiceReference",
-					"parameters": {
-						"adls_url": {
-							"value": "@dataset().adls_url",
-							"type": "Expression"
-						}
+					"url": "[parameters('ADLS_AutoIR_LS_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('ADLS_AutoIR_LS_accountKey')]"
 					}
-				},
-				"parameters": {
-					"adls_url": {
-						"type": "string"
-					},
-					"table_name": {
-						"type": "string"
-					},
-					"source": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "Parquet",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"folderPath": {
-							"value": "@concat('raw/',dataset().source,'/',dataset().table_name,'/Year=',formatDateTime(utcNow(),'yyyy'),'/Month=',formatDateTime(utcNow(),'MM'),'/Day=',formatDateTime(utcNow(),'dd'),'/')",
-							"type": "Expression"
-						},
-						"fileSystem": "zathura-dev"
-					},
-					"compressionCodec": "snappy"
-				},
-				"schema": []
+				}
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/adls_parquet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/AzureKV_LS')]",
@@ -1347,6 +1684,72 @@
 				"[concat(variables('factoryId'), '/integrationRuntimes/SHIR')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureKV_LS')]"
 			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQLDatabase_AutoIR_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "AzureKV_LS",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('SQLDatabase_AutoIR_LS_properties_typeProperties_connectionString_secretName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureKV_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQL_Auto_IR_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "AzureKV_LS",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('SQL_Auto_IR_LS_properties_typeProperties_connectionString_secretName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureKV_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/adls_azure_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('adls_azure_LS_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('adls_azure_LS_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/adls_parquet')]",
@@ -1407,6 +1810,40 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/integrationRuntimes/SHIR')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Write_data_to-SQLServer')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "ADLS-to-SQL",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"adls_url": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url')]",
+							"Sql_connectionstring": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring')]"
+						}
+					}
+				],
+				"type": "BlobEventsTrigger",
+				"typeProperties": {
+					"blobPathBeginsWith": "/databricks-storage-dev/blobs/tables/silver_flights",
+					"blobPathEndsWith": ".parquet",
+					"ignoreEmptyBlobs": true,
+					"scope": "[parameters('Write_data_to-SQLServer_properties_typeProperties_scope')]",
+					"events": [
+						"Microsoft.Storage.BlobCreated"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/ADLS-to-SQL')]"
 			]
 		},
 		{

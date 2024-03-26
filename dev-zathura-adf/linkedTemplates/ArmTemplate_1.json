@@ -1,0 +1,461 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "dev-zathura-adf"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url": {
+			"type": "string",
+			"defaultValue": "https://devzathura.dfs.core.windows.net/"
+		},
+		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring": {
+			"type": "string",
+			"defaultValue": "sql-connection"
+		},
+		"Write_data_to-SQLServer_properties_typeProperties_scope": {
+			"type": "string",
+			"defaultValue": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/get_runparams')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "get_env_params",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"dataset": {
+								"referenceName": "DataIngestion_Excel_DS",
+								"type": "DatasetReference",
+								"parameters": {
+									"adls_url": {
+										"value": "@pipeline().parameters.adls_url",
+										"type": "Expression"
+									},
+									"environment": {
+										"value": "@pipeline().parameters.environment",
+										"type": "Expression"
+									}
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "collect_params",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "get_env_params",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('get_env_params').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "temp1",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "temp1",
+										"value": {
+											"value": "@concat(variables('temp2'),', \"',item().paramName,'\" : \"',item().paramValue,'\"')",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "temp2",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "temp1",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "temp2",
+										"value": {
+											"value": "@variables('temp1')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "return_config",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "collect_params",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "pipelineReturnValue",
+							"value": [
+								{
+									"key": "config",
+									"value": {
+										"type": "Expression",
+										"content": "@concat('{',variables('temp2'),'}')"
+									}
+								}
+							],
+							"setSystemVariable": true
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string"
+					},
+					"environment": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"temp1": {
+						"type": "String"
+					},
+					"temp2": {
+						"type": "String",
+						"defaultValue": "\"1\":\"1\""
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Data-Ingestion')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Postgress-to-adls Data Ingestion",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "set_config",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Postgress-to-adls",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"postgress_hostname": {
+									"value": "@json(variables('config')).postgress_hostname",
+									"type": "Expression"
+								},
+								"postgress_portnumber": {
+									"value": "@json(variables('config')).postgress_port",
+									"type": "Expression"
+								},
+								"postgress_database": {
+									"value": "@json(variables('config')).postgress_database",
+									"type": "Expression"
+								},
+								"postgress_username": {
+									"value": "@json(variables('config')).postgress_username",
+									"type": "Expression"
+								},
+								"adls_url": {
+									"value": "@json(variables('config')).adls_url",
+									"type": "Expression"
+								},
+								"source": "Postgress"
+							}
+						}
+					},
+					{
+						"name": "SQLServer-to-adls Data Ingestion",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "set_config",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "SQLServer-to-adls",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"Sql_connectionstring": {
+									"value": "@json(variables('config')).sql_connectionstring",
+									"type": "Expression"
+								},
+								"adls_url": {
+									"value": "@json(variables('config')).adls_url",
+									"type": "Expression"
+								},
+								"source": "SQLServer"
+							}
+						}
+					},
+					{
+						"name": "ErrorHandling2",
+						"type": "ExecutePipeline",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
+						"dependsOn": [
+							{
+								"activity": "Postgress-to-adls Data Ingestion",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "GenericErrorHandling",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"receiver": {
+									"value": "@json(variables('config')).recipients",
+									"type": "Expression"
+								},
+								"Error": {
+									"value": "@concat('Postgress-to-adls Errors -',activity('Postgress-to-adls Data Ingestion').error?.message)",
+									"type": "Expression"
+								},
+								"pipeline_name": {
+									"value": "@pipeline().Pipeline",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "get_env_params",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "get_runparams",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"adls_url": {
+									"value": "@pipeline().parameters.adls_url",
+									"type": "Expression"
+								},
+								"environment": {
+									"value": "@pipeline().parameters.environment",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "set_config",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "get_env_params",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "config",
+							"value": {
+								"value": "@activity('get_env_params').output.pipelineReturnValue.config",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ErrorHandling1",
+						"type": "ExecutePipeline",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
+						"dependsOn": [
+							{
+								"activity": "SQLServer-to-adls Data Ingestion",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "GenericErrorHandling",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"receiver": {
+									"value": "@json(variables('config')).recipients",
+									"type": "Expression"
+								},
+								"Error": {
+									"value": "@concat('SQLServer-to_adls Errors- ',activity('SQLServer-to-adls Data Ingestion').error?.message)",
+									"type": "Expression"
+								},
+								"pipeline_name": {
+									"value": "@pipeline().Pipeline",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"adls_url": {
+						"type": "string",
+						"defaultValue": "https://devzathura.dfs.core.windows.net/"
+					},
+					"environment": {
+						"type": "string",
+						"defaultValue": "dev"
+					}
+				},
+				"variables": {
+					"config": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/get_runparams')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Write_data_to-SQLServer')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "ADLS-to-SQL",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"adls_url": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url')]",
+							"Sql_connectionstring": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring')]"
+						}
+					}
+				],
+				"type": "BlobEventsTrigger",
+				"typeProperties": {
+					"blobPathBeginsWith": "/databricks-storage-dev/blobs/tables/silver_flights",
+					"blobPathEndsWith": ".parquet",
+					"ignoreEmptyBlobs": true,
+					"scope": "[parameters('Write_data_to-SQLServer_properties_typeProperties_scope')]",
+					"events": [
+						"Microsoft.Storage.BlobCreated"
+					]
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
