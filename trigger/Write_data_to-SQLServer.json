@@ -19,7 +19,7 @@
 		"typeProperties": {
 			"blobPathBeginsWith": "/databricks-storage-dev/blobs/tables/silver_flights",
 			"blobPathEndsWith": ".parquet",
-			"ignoreEmptyBlobs": true,
+			"ignoreEmptyBlobs": false,
 			"scope": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura",
 			"events": [
 				"Microsoft.Storage.BlobCreated"
