@@ -2,7 +2,7 @@
 	"name": "Write_data_to-SQLServer",
 	"properties": {
 		"annotations": [],
-		"runtimeState": "Stopped",
+		"runtimeState": "Started",
 		"pipelines": [
 			{
 				"pipelineReference": {
