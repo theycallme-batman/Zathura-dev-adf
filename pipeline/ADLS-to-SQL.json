@@ -1,0 +1,82 @@
+{
+	"name": "ADLS-to-SQL",
+	"properties": {
+		"activities": [
+			{
+				"name": "ADLS-to-SQLSerevr",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": "tables/silver_flights",
+							"wildcardFileName": "*parquet",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "ParquetReadSettings"
+						}
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ADLS_Databricks_parquet_DS",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_url": {
+								"value": "@pipeline().parameters.adls_url",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SQLDatabase_AutoIR_DS",
+						"type": "DatasetReference",
+						"parameters": {
+							"Sql_connectionstring": {
+								"value": "@pipeline().parameters.Sql_connectionstring",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"adls_url": {
+				"type": "string"
+			},
+			"Sql_connectionstring": {
+				"type": "string"
+			}
+		},
+		"annotations": []
+	}
+}

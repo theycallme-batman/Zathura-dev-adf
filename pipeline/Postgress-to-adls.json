@@ -21,7 +21,7 @@
 						"partitionOption": "None"
 					},
 					"dataset": {
-						"referenceName": "AzurePostgreSqlTable1",
+						"referenceName": "Landing_dataIngestionPostgress_DS",
 						"type": "DatasetReference",
 						"parameters": {
 							"postgress_hostname": {
@@ -86,7 +86,7 @@
 									"partitionOption": "None"
 								},
 								"dataset": {
-									"referenceName": "AzurePostgreSqlTable1",
+									"referenceName": "Landing_dataIngestionPostgress_DS",
 									"type": "DatasetReference",
 									"parameters": {
 										"postgress_hostname": {
@@ -170,7 +170,7 @@
 										},
 										"inputs": [
 											{
-												"referenceName": "AzurePostgreSqlTable1",
+												"referenceName": "Landing_dataIngestionPostgress_DS",
 												"type": "DatasetReference",
 												"parameters": {
 													"postgress_hostname": {
@@ -194,7 +194,7 @@
 										],
 										"outputs": [
 											{
-												"referenceName": "Parquet1",
+												"referenceName": "DataIngestion_Parquet_DS",
 												"type": "DatasetReference",
 												"parameters": {
 													"adls_url": {
@@ -242,7 +242,7 @@
 												"partitionOption": "None"
 											},
 											"dataset": {
-												"referenceName": "AzurePostgreSqlTable1",
+												"referenceName": "Landing_dataIngestionPostgress_DS",
 												"type": "DatasetReference",
 												"parameters": {
 													"postgress_hostname": {

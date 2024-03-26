@@ -1,0 +1,29 @@
+{
+	"name": "Write_data_to-SQLServer",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "ADLS-to-SQL",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"adls_url": "https://devzathura.dfs.core.windows.net/",
+					"Sql_connectionstring": "sql-connection"
+				}
+			}
+		],
+		"type": "BlobEventsTrigger",
+		"typeProperties": {
+			"blobPathBeginsWith": "/databricks-storage-dev/blobs/tables/silver_flights",
+			"blobPathEndsWith": ".parquet",
+			"ignoreEmptyBlobs": true,
+			"scope": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura",
+			"events": [
+				"Microsoft.Storage.BlobCreated"
+			]
+		}
+	}
+}

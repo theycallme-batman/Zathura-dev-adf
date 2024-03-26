@@ -1,5 +1,5 @@
 {
-	"name": "AzureSqlConnect_DS",
+	"name": "AzureSqlConnectDataIngestion_DS",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "AzureSqlDatabase_LS",

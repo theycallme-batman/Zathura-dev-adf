@@ -1,5 +1,5 @@
 {
-	"name": "Excel_DS",
+	"name": "DataIngestion_Excel_DS",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "adls_parquet",

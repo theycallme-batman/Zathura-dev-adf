@@ -1,0 +1,95 @@
+{
+	"name": "SQLDatabase_AutoIR_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase_LS",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"Sql_connectionstring": {
+					"value": "@dataset().Sql_connectionstring",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"Sql_connectionstring": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "id",
+				"type": "bigint",
+				"precision": 19
+			},
+			{
+				"name": "flight_code",
+				"type": "varchar"
+			},
+			{
+				"name": "flight_date",
+				"type": "date"
+			},
+			{
+				"name": "source_airport",
+				"type": "varchar"
+			},
+			{
+				"name": "destination_airport",
+				"type": "varchar"
+			},
+			{
+				"name": "source_city",
+				"type": "varchar"
+			},
+			{
+				"name": "destination_city",
+				"type": "varchar"
+			},
+			{
+				"name": "estimated_departure_time",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "departure_time",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "estimated_arrival_time",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "arrival_time",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "total_passengers",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "status",
+				"type": "varchar"
+			},
+			{
+				"name": "run_id",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "flights"
+		}
+	}
+}
