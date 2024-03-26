@@ -6,18 +6,6 @@
 			"type": "string",
 			"metadata": "Data Factory name",
 			"defaultValue": "dev-zathura-adf"
-		},
-		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url": {
-			"type": "string",
-			"defaultValue": "https://devzathura.dfs.core.windows.net/"
-		},
-		"Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring": {
-			"type": "string",
-			"defaultValue": "sql-connection"
-		},
-		"Write_data_to-SQLServer_properties_typeProperties_scope": {
-			"type": "string",
-			"defaultValue": "/subscriptions/b6526c91-e481-41e2-bd95-a4e3578646ca/resourceGroups/Zathura_Airlines/providers/Microsoft.Storage/storageAccounts/devzathura"
 		}
 	},
 	"variables": {
@@ -424,38 +412,6 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/get_runparams')]"
 			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Write_data_to-SQLServer')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Stopped",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "ADLS-to-SQL",
-							"type": "PipelineReference"
-						},
-						"parameters": {
-							"adls_url": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_adls_url')]",
-							"Sql_connectionstring": "[parameters('Write_data_to-SQLServer_properties_ADLS-to-SQL_parameters_Sql_connectionstring')]"
-						}
-					}
-				],
-				"type": "BlobEventsTrigger",
-				"typeProperties": {
-					"blobPathBeginsWith": "/databricks-storage-dev/blobs/tables/silver_flights",
-					"blobPathEndsWith": ".parquet",
-					"ignoreEmptyBlobs": false,
-					"scope": "[parameters('Write_data_to-SQLServer_properties_typeProperties_scope')]",
-					"events": [
-						"Microsoft.Storage.BlobCreated"
-					]
-				}
-			},
-			"dependsOn": []
 		}
 	]
 }
