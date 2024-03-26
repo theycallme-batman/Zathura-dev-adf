@@ -431,7 +431,7 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"annotations": [],
-				"runtimeState": "Stopped",
+				"runtimeState": "Started",
 				"pipelines": [
 					{
 						"pipelineReference": {
@@ -448,7 +448,7 @@
 				"typeProperties": {
 					"blobPathBeginsWith": "/databricks-storage-dev/blobs/tables/silver_flights",
 					"blobPathEndsWith": ".parquet",
-					"ignoreEmptyBlobs": true,
+					"ignoreEmptyBlobs": false,
 					"scope": "[parameters('Write_data_to-SQLServer_properties_typeProperties_scope')]",
 					"events": [
 						"Microsoft.Storage.BlobCreated"
