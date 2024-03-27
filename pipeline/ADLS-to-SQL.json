@@ -5,6 +5,8 @@
 			{
 				"name": "ADLS-to-SQLSerevr",
 				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -89,7 +91,13 @@
 					},
 					"dataset": {
 						"referenceName": "AzureSqlConnectDataIngestion_DS",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"Sql_connectionstring": {
+								"value": "@pipeline().parameters.Sql_connectionstring",
+								"type": "Expression"
+							}
+						}
 					}
 				}
 			},
@@ -169,12 +177,19 @@
 										"adls_url": {
 											"value": "@pipeline().parameters.adls_url",
 											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@item().TABLE_NAME",
+											"type": "Expression"
 										}
 									}
 								},
-								"fieldList": [],
+								"fieldList": [
+									"childItems"
+								],
 								"storeSettings": {
 									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
 									"modifiedDatetimeStart": {
 										"value": "@activity('Get ThroughDate').output.firstRow",
 										"type": "Expression"
