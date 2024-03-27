@@ -14,9 +14,6 @@
 		"parameters": {
 			"adls_url": {
 				"type": "string"
-			},
-			"table_name": {
-				"type": "string"
 			}
 		},
 		"annotations": [],
@@ -24,10 +21,6 @@
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
-				"folderPath": {
-					"value": "@concat('tables/silver_',dataset().table_name)",
-					"type": "Expression"
-				},
 				"fileSystem": "databricks-storage-dev"
 			},
 			"compressionCodec": "snappy"
