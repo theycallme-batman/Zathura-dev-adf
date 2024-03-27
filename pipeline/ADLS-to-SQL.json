@@ -116,7 +116,7 @@
 											"value": "@concat('tables/silver_',item().TABLE_NAME)",
 											"type": "Expression"
 										},
-										"wildcardFileName": "*parquet",
+										"wildcardFileName": "*.parquet",
 										"enablePartitionDiscovery": false
 									},
 									"formatSettings": {
