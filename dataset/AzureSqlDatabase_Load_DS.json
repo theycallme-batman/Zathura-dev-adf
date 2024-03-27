@@ -1,0 +1,39 @@
+{
+	"name": "AzureSqlDatabase_Load_DS",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase_LS",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"Sql_connectionstring": {
+					"value": "@dataset().Sql_connection",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"Sql_connection": {
+				"type": "string"
+			},
+			"TABLE_NAME": {
+				"type": "string"
+			},
+			"TABLE_SCHEMA": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().TABLE_SCHEMA",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().TABLE_NAME",
+				"type": "Expression"
+			}
+		}
+	}
+}
