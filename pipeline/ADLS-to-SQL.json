@@ -26,7 +26,7 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"Sql_connectionstring": {
-								"value": "@pipeline().parameters.Sql_connectionstring",
+								"value": "@pipeline().parameters.config.sql_connectionstring",
 								"type": "Expression"
 							}
 						}
@@ -57,7 +57,7 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"Sql_connectionstring": {
-								"value": "@pipeline().parameters.Sql_connectionstring",
+								"value": "@pipeline().parameters.config.sql_connectionstring",
 								"type": "Expression"
 							}
 						}
@@ -70,13 +70,13 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "get_tablelist",
+						"activity": "Get ThroughDate",
 						"dependencyConditions": [
 							"Succeeded"
 						]
 					},
 					{
-						"activity": "Get ThroughDate",
+						"activity": "get_tablelist",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -145,7 +145,7 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"adls_url": {
-											"value": "@pipeline().parameters.adls_url",
+											"value": "@pipeline().parameters.config.adls_url",
 											"type": "Expression"
 										}
 									}
@@ -157,7 +157,7 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"Sql_connection": {
-											"value": "@pipeline().parameters.Sql_connectionstring",
+											"value": "@pipeline().parameters.config.sql_connectionstring",
 											"type": "Expression"
 										},
 										"TABLE_NAME": {
@@ -176,7 +176,7 @@
 				}
 			},
 			{
-				"name": "Lookup1",
+				"name": "Update DataThroughDate",
 				"type": "Lookup",
 				"dependsOn": [
 					{
@@ -209,22 +209,68 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"Sql_connectionstring": {
-								"value": "@pipeline().parameters.Sql_connectionstring",
+								"value": "@pipeline().parameters.config.sql_connectionstring",
 								"type": "Expression"
 							}
 						}
 					}
 				}
+			},
+			{
+				"name": "Update run_id",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Update DataThroughDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "UpdateRunID",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AzureSqlConnectDataIngestion_DS",
+						"type": "DatasetReference",
+						"parameters": {
+							"Sql_connectionstring": {
+								"value": "@pipeline().parameters.config.sql_connectionstring",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": true
+				}
 			}
 		],
 		"parameters": {
-			"adls_url": {
-				"type": "string",
-				"defaultValue": "https://devzathura.dfs.core.windows.net/"
-			},
-			"Sql_connectionstring": {
-				"type": "string",
-				"defaultValue": "sql-connection"
+			"config": {
+				"type": "object",
+				"defaultValue": {
+					"1": "1",
+					"postgress_hostname": "dev-zathura-edw.postgres.database.azure.com",
+					"postgress_port": "5432",
+					"postgress_database": "Landing",
+					"postgress_username": "sv_pgdev",
+					"adls_url": "https://devzathura.dfs.core.windows.net/",
+					"sql_connectionstring": "sql-connection",
+					"recipients": "yashkothari5499@gmail.com",
+					"databricks_url": "https://adb-2618463044147574.14.azuredatabricks.net/api/2.0/pipelines/71c201d2-2314-474a-baf6-a4e19455baa7/updates",
+					"authorization": "Bearer dapi4a20c473f92780d6b992e9b5f5b9de03"
+				}
 			}
 		},
 		"variables": {

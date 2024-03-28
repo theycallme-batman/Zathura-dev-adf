@@ -5,14 +5,7 @@
 			{
 				"name": "Postgress-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
-				"dependsOn": [
-					{
-						"activity": "set_config",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"secureInput": false
 				},
@@ -25,23 +18,23 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"postgress_hostname": {
-							"value": "@json(variables('config')).postgress_hostname",
+							"value": "@pipeline().parameters.config.postgress_hostname\n",
 							"type": "Expression"
 						},
 						"postgress_portnumber": {
-							"value": "@json(variables('config')).postgress_port",
+							"value": "@pipeline().parameters.config.postgress_port",
 							"type": "Expression"
 						},
 						"postgress_database": {
-							"value": "@json(variables('config')).postgress_database",
+							"value": "@pipeline().parameters.config.postgress_database",
 							"type": "Expression"
 						},
 						"postgress_username": {
-							"value": "@json(variables('config')).postgress_username",
+							"value": "@pipeline().parameters.config.postgress_username",
 							"type": "Expression"
 						},
 						"adls_url": {
-							"value": "@json(variables('config')).adls_url",
+							"value": "@pipeline().parameters.config.adls_url",
 							"type": "Expression"
 						},
 						"source": "Postgress"
@@ -51,14 +44,7 @@
 			{
 				"name": "SQLServer-to-adls Data Ingestion",
 				"type": "ExecutePipeline",
-				"dependsOn": [
-					{
-						"activity": "set_config",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"secureInput": false
 				},
@@ -71,11 +57,11 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"Sql_connectionstring": {
-							"value": "@json(variables('config')).sql_connectionstring",
+							"value": "@pipeline().parameters.config.sql_connectionstring",
 							"type": "Expression"
 						},
 						"adls_url": {
-							"value": "@json(variables('config')).adls_url",
+							"value": "@pipeline().parameters.config.adls_url",
 							"type": "Expression"
 						},
 						"source": "SQLServer"
@@ -107,7 +93,7 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"receiver": {
-							"value": "@json(variables('config')).recipients",
+							"value": "@pipeline().parameters.config.recipients",
 							"type": "Expression"
 						},
 						"Error": {
@@ -118,56 +104,6 @@
 							"value": "@pipeline().Pipeline",
 							"type": "Expression"
 						}
-					}
-				}
-			},
-			{
-				"name": "get_env_params",
-				"type": "ExecutePipeline",
-				"dependsOn": [],
-				"policy": {
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"pipeline": {
-						"referenceName": "get_runparams",
-						"type": "PipelineReference"
-					},
-					"waitOnCompletion": true,
-					"parameters": {
-						"adls_url": {
-							"value": "@pipeline().parameters.adls_url",
-							"type": "Expression"
-						},
-						"environment": {
-							"value": "@pipeline().parameters.environment",
-							"type": "Expression"
-						}
-					}
-				}
-			},
-			{
-				"name": "set_config",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "get_env_params",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "config",
-					"value": {
-						"value": "@activity('get_env_params').output.pipelineReturnValue.config",
-						"type": "Expression"
 					}
 				}
 			},
@@ -196,7 +132,7 @@
 					"waitOnCompletion": true,
 					"parameters": {
 						"receiver": {
-							"value": "@json(variables('config')).recipients",
+							"value": "@pipeline().parameters.config.recipients",
 							"type": "Expression"
 						},
 						"Error": {
@@ -212,18 +148,8 @@
 			}
 		],
 		"parameters": {
-			"adls_url": {
-				"type": "string",
-				"defaultValue": "https://devzathura.dfs.core.windows.net/"
-			},
-			"environment": {
-				"type": "string",
-				"defaultValue": "dev"
-			}
-		},
-		"variables": {
 			"config": {
-				"type": "String"
+				"type": "object"
 			}
 		},
 		"annotations": []
